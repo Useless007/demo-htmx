@@ -2,26 +2,57 @@ import { Database } from 'bun:sqlite';
 import path from 'path';
 import { applyMigrations } from './migrate.js';
 
-const DB_PATH = process.env.DB_PATH ? path.resolve(process.env.DB_PATH) : path.resolve(process.cwd(), 'data', 'app.db');
-// Ensure migrations have been applied for this DB path before opening connection
-try { applyMigrations(DB_PATH); } catch (e) { /* continue even if migrations fail here */ }
-const db = new Database(DB_PATH);
-try {
-    // Improve concurrency behavior for tests: use WAL and a short busy timeout
-    try { db.exec('PRAGMA journal_mode = WAL;'); } catch (e) { /* ignore if unsupported */ }
-    try { db.exec('PRAGMA busy_timeout = 5000;'); } catch (e) { /* ignore */ }
-} catch (e) { /* ignore */ }
+// Keep track of opened DB per resolved path so tests can change process.env.DB_PATH
+let _currentPath = null;
+let _currentDb = null;
+
+function resolveDbPath() {
+    return process.env.DB_PATH ? path.resolve(process.env.DB_PATH) : path.resolve(process.cwd(), 'data', 'app.db');
+}
+
+function openDbForPath(p) {
+    // Ensure migrations applied for this path before opening
+    try { applyMigrations(p); } catch (e) { /* ignore */ }
+    const d = new Database(p);
+    try { d.exec('PRAGMA journal_mode = WAL;'); } catch (e) { }
+    try { d.exec('PRAGMA busy_timeout = 5000;'); } catch (e) { }
+    return d;
+}
+
+function ensureDb() {
+    const p = resolveDbPath();
+    if (_currentPath !== p || !_currentDb) {
+        try { if (_currentDb) _currentDb.close(); } catch (e) { }
+        _currentDb = openDbForPath(p);
+        _currentPath = p;
+    }
+    return _currentDb;
+}
+
+// Export a proxy that forwards operations to the current DB instance so existing
+// imports using `db.run` etc continue to work even if the DB_PATH changes later.
+const db = new Proxy({}, {
+    get(_, prop) {
+        const d = ensureDb();
+        const val = d[prop];
+        if (typeof val === 'function') return val.bind(d);
+        return val;
+    }
+});
 
 function withTransaction(fn) {
+    const d = ensureDb();
     try {
-        db.exec('BEGIN');
-        const res = fn(db);
-        db.exec('COMMIT');
+        d.exec('BEGIN');
+        const res = fn(d);
+        d.exec('COMMIT');
         return res;
     } catch (err) {
-        try { db.exec('ROLLBACK'); } catch (e) { }
+        try { d.exec('ROLLBACK'); } catch (e) { }
         throw err;
     }
 }
+
+const DB_PATH = resolveDbPath();
 
 export { db, withTransaction, DB_PATH };

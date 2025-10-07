@@ -51,6 +51,25 @@ function changeQuantityAtomic(productId, delta, user, note = null) {
         const prodRow = tx.query(`SELECT quantity FROM products WHERE id = ${pid}`).get();
         if (!prodRow) throw new Error('NotFound');
         const curQty = Array.isArray(prodRow) ? prodRow[0] : prodRow.quantity;
+        // Outbound (negative delta) exceeding current stock -> create reservation
+        if (delta < 0 && (curQty + delta) < 0) {
+            const shortfall = Math.abs(curQty + delta); // amount that would go below zero
+            // Determine whether this reservation requires manual approval using AUTO_FULFILL_THRESHOLD
+            const envThreshold = Number(process.env.AUTO_FULFILL_THRESHOLD || 5);
+            const requiresApproval = shortfall > envThreshold ? 1 : 0;
+            // Create a reservation for the shortfall and do not change on-hand quantity
+            tx.run('INSERT INTO stock_reservations (product_id, qty_requested, timestamp, user, fulfilled, note, requires_approval) VALUES (?, ?, ?, ?, 0, ?, ?)', [productId, shortfall, Date.now(), user, note, requiresApproval]);
+            const resRow = tx.query('SELECT last_insert_rowid() as id').get();
+            const resId = Array.isArray(resRow) ? resRow[0] : resRow.id;
+            try { console.log('[debug:changeQuantityAtomic] inserted reservation id=', resId, 'requiresApproval=', requiresApproval); } catch (e) { }
+            try {
+                const rows = tx.query('SELECT id, qty_requested, requires_approval FROM stock_reservations WHERE product_id = ? ORDER BY id', [productId]).all();
+                try { console.log('[debug:changeQuantityAtomic] rows in tx =>', rows); } catch (e) { }
+            } catch (e) { }
+            return { productId, action: 'reservation_created', reservationId: resId, qty_requested: shortfall, requires_approval: requiresApproval };
+        }
+
+        // Otherwise safe to record transaction and update quantity
         const newQty = curQty + delta;
         tx.run('INSERT INTO stock_transactions (product_id, delta, timestamp, user, note) VALUES (?, ?, ?, ?, ?)', [productId, delta, Date.now(), user, note]);
         tx.run('UPDATE products SET quantity = ? WHERE id = ?', [newQty, productId]);

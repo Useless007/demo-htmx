@@ -60,6 +60,7 @@ document.body.addEventListener('htmx:responseError', async (e) => {
     // If the error came from the add form, ensure the add button is re-enabled and show a toast
     try {
         const url = e.detail.requestConfig && e.detail.requestConfig.path ? e.detail.requestConfig.path : (e.detail.xhr && e.detail.xhr.responseURL ? e.detail.xhr.responseURL : null);
+        // handle add form errors
         if (String(url).startsWith('/add')) {
             const btn = document.getElementById('add-btn'); if (btn) btn.removeAttribute('disabled');
             const xhr = e.detail.xhr;
@@ -68,6 +69,15 @@ document.body.addEventListener('htmx:responseError', async (e) => {
             const t = document.createElement('div'); t.className = 'toast'; t.textContent = msgText; document.body.appendChild(t);
             setTimeout(() => { t.classList.add('visible'); }, 10);
             setTimeout(() => { t.classList.remove('visible'); setTimeout(() => t.remove(), 250); }, 3500);
+        }
+        // handle product create form errors (e.g., 409 Duplicate SKU)
+        if (String(url).startsWith('/products')) {
+            const btn = document.querySelector('#product-form button[type="submit"]'); if (btn) btn.removeAttribute('disabled');
+            const errDiv = document.getElementById('product-form-error');
+            const xhr = e.detail.xhr;
+            let msgText = 'Request failed';
+            try { msgText = xhr && xhr.responseText ? (JSON.parse(xhr.responseText).error || xhr.responseText) : (xhr.statusText || msgText); } catch (_) { msgText = xhr.responseText || (xhr.statusText || msgText); }
+            if (errDiv) { errDiv.textContent = msgText; setTimeout(() => { errDiv.textContent = ''; }, 4500); }
         }
     } catch (err) {
         console.error('error handling add form error', err);
@@ -116,6 +126,31 @@ document.body.addEventListener('htmx:afterRequest', (e) => {
                     }
                 } catch (err) { }
             }
+        }
+        // product create success handling: clear form and show toast
+        if (String(path).startsWith('/products')) {
+            const status = e.detail.xhr && typeof e.detail.xhr.status === 'number' ? e.detail.xhr.status : (e.detail.response && e.detail.response.status);
+            const form = document.getElementById('product-form');
+            if (form && status && status >= 200 && status < 300) {
+                // clear inputs
+                const inps = form.querySelectorAll('input[name]');
+                inps.forEach(i => { if (i.type !== 'submit' && i.type !== 'button') i.value = ''; });
+                const t = document.createElement('div'); t.className = 'toast'; t.textContent = 'Product created'; document.body.appendChild(t);
+                setTimeout(() => { t.classList.add('visible'); }, 10);
+                setTimeout(() => { t.classList.remove('visible'); setTimeout(() => t.remove(), 250); }, 1800);
+                // clear any previous product form error
+                const errDiv = document.getElementById('product-form-error'); if (errDiv) errDiv.textContent = '';
+                // highlight newly added product in swapped list (if present)
+                try {
+                    const swapped = document.getElementById('products-list');
+                    if (swapped) {
+                        const first = swapped.querySelector('li[data-id]');
+                        if (first) { first.classList.add('flash'); setTimeout(() => first.classList.remove('flash'), 1200); }
+                    }
+                } catch (err) { }
+            }
+            // always re-enable submit button after request
+            const btn = document.querySelector('#product-form button[type="submit"]'); if (btn) btn.removeAttribute('disabled');
         }
     } catch (err) { }
 });

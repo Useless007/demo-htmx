@@ -12,8 +12,9 @@ function allocateReservationsForProduct(productId, availableQty, actor = 'system
         const allocations = [];
         if (!availableQty || availableQty <= 0) return allocations;
 
-        // fetch pending reservations FIFO
-        const rows = tx.query('SELECT id, qty_requested, requires_approval FROM stock_reservations WHERE product_id = ? AND fulfilled = 0 ORDER BY id', [productId]).all();
+        const pid = Number(productId) || 0;
+        // fetch pending reservations FIFO (inline pid to avoid driver binding quirks in tests)
+        const rows = tx.query(`SELECT id, qty_requested, requires_approval FROM stock_reservations WHERE product_id = ${pid} AND fulfilled = 0 ORDER BY id`).all();
         let remaining = Number(availableQty);
         for (const r of rows) {
             const res = Array.isArray(r) ? { id: r[0], qty_requested: r[1], requires_approval: r[2] } : r;
