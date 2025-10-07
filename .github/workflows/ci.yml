@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup Bun
-        uses: oven-sh/bun-action@v2
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.x"
       - name: Install dependencies
