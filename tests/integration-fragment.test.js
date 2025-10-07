@@ -28,10 +28,11 @@ async function run() {
     assert(up, 'server did not start in time');
 
     // Create a product via the server so the DB is written by the server process
+    const uniqueSku = `INT-${Date.now()}-${process.pid}`;
     const createResp = await fetch(`${base}/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ name: 'IT-INT', sku: 'INT-1', quantity: '1' })
+        body: new URLSearchParams({ name: 'IT-INT', sku: uniqueSku, quantity: '1' })
     });
     if (!createResp.ok) {
         const b = await createResp.text();

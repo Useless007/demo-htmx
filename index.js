@@ -5,6 +5,7 @@ import Database from "bun:sqlite";
 import { applyMigrations } from './src/db/migrate.js';
 import { createProduct, listProducts, getProductById } from './src/models/product.js';
 import { validateTransactionForm, validateReserveForm, validateCreateProductForm } from './src/validators/inputs.js';
+import { validateCreateProductPayload, checkSkuUnique } from './src/validators/productValidator.js';
 import { createReservation } from './src/models/stockReservation.js';
 import { changeQuantityAtomic } from './src/models/product.js';
 import { allocateReservationsForProduct } from './src/services/reservationAllocator.js';
@@ -164,14 +165,19 @@ export function startServer(port = Number(process.env.PORT || 3000)) {
 
             if (req.method === 'POST' && url.pathname === '/products') {
                 return req.formData().then(fd => {
-                    const v = validateCreateProductForm(fd);
+                    // Use new validator that returns parsed payload
+                    const v = validateCreateProductPayload(fd);
                     if (!v.ok) return new Response(JSON.stringify({ error: v.msg }), { status: v.status, headers: { 'Content-Type': 'application/json' } });
+                    // Check SKU uniqueness and return 409 if duplicate
+                    if (!checkSkuUnique(v.value.sku)) {
+                        return new Response(JSON.stringify({ error: 'SKU already exists' }), { status: 409, headers: { 'Content-Type': 'application/json' } });
+                    }
                     try {
                         createProduct(v.value);
                     } catch (e) {
                         return new Response(JSON.stringify({ error: String(e.message) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
                     }
-                    const body = `<ul id=\"products-list\" data-message=\"Product created\">${renderProductsList()}</ul>`;
+                    const body = `<ul id="products-list" data-message="Product created">${renderProductsList()}</ul>`;
                     return new Response(body, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
                 });
             }
@@ -188,6 +194,18 @@ export function startServer(port = Number(process.env.PORT || 3000)) {
                 }
             }
 
+            // debug: list reservations for a product (JSON) - used by tests
+            const resListMatch = url.pathname.match(/^\/products\/(\d+)\/reservations\/?$/);
+            if (req.method === 'GET' && resListMatch) {
+                const id = Number(resListMatch[1]);
+                try {
+                    const rows = db.query('SELECT id, qty_requested, fulfilled, requires_approval FROM stock_reservations WHERE product_id = ? ORDER BY id', [id]).all();
+                    return new Response(JSON.stringify({ productId: id, reservations: rows }, null, 2), { headers: { 'Content-Type': 'application/json' } });
+                } catch (e) {
+                    return new Response(JSON.stringify({ error: String(e) }, null, 2), { status: 500, headers: { 'Content-Type': 'application/json' } });
+                }
+            }
+
             // transactions route: allow numeric or string ids and optional trailing slash
             const txMatch = url.pathname.match(/^\/products\/([^/]+)\/transactions\/?$/);
             if (req.method === 'POST' && txMatch) {
@@ -199,18 +217,15 @@ export function startServer(port = Number(process.env.PORT || 3000)) {
                     if (!v.ok) return new Response(JSON.stringify({ error: v.msg }), { status: v.status, headers: { 'Content-Type': 'application/json' } });
                     const { delta, note } = v.value;
                     const user = req.headers.get('x-user-id') || 'demo-user';
-                    // if outbound and insufficient, create reservation instead
-                    const prod = getProductById(id);
-                    if (!prod) return new Response('Not found', { status: 404 });
-                    if (delta < 0 && prod.quantity + delta < 0) {
-                        // create reservation for the shortfall
-                        const short = Math.abs(delta) - prod.quantity;
-                        createReservation(id, short, user, note, 0);
-                        const body = `<ul id=\"products-list\" data-message=\"Reservation created for ${short}\" data-message-id=\"${id}\">${renderProductsList()}</ul>`;
+                    // Delegate quantity changes to the product model which will
+                    // create reservations when outbound exceeds stock (inside a
+                    // transaction) and will update quantities atomically.
+                    const result = await changeQuantityAtomic(id, delta, user, note);
+                    // If a reservation was created, inform the client via fragment
+                    if (result && result.action === 'reservation_created') {
+                        const body = `<ul id=\"products-list\" data-message=\"Reservation created for ${result.qty_requested}\" data-message-id=\"${id}\">${renderProductsList()}</ul>`;
                         return new Response(body, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
                     }
-                    // else apply transaction atomically
-                    await changeQuantityAtomic(id, delta, user, note);
                     // after inbound (delta>0), attempt auto-allocation for pending reservations
                     if (delta > 0) {
                         try { await allocateReservationsForProduct(id, delta, user); } catch (e) { console.warn('Allocator error', e); }
@@ -233,7 +248,8 @@ export function startServer(port = Number(process.env.PORT || 3000)) {
                     if (!v.ok) return new Response(JSON.stringify({ error: v.msg }), { status: v.status, headers: { 'Content-Type': 'application/json' } });
                     const { qty, note } = v.value;
                     const user = req.headers.get('x-user-id') || 'demo-user';
-                    createReservation(id, qty, user, note, 0);
+                    // delegate requires_approval decision to model (threshold-based)
+                    createReservation(id, qty, user, note);
                     const body = `<ul id=\"products-list\" data-message=\"Reservation created (${qty})\" data-message-id=\"${id}\">${renderProductsList()}</ul>`;
                     return new Response(body, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
                 } catch (e) {
