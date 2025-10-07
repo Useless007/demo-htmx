@@ -1,0 +1,96 @@
+{
+  "info": {
+    "name": "demo-htmx API tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create product",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "X-User-Id", "value": "tester" }],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "name", "value": "PM-Product" },
+            { "key": "sku", "value": "PM-001" },
+            { "key": "quantity", "value": "2" }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3001/products",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["products"]
+        }
+      }
+    },
+    {
+      "name": "List products",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3001/products",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["products"]
+        }
+      }
+    },
+    {
+      "name": "Post transaction (outbound)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "X-User-Id", "value": "tester" }],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "delta", "value": "-5" },
+            { "key": "note", "value": "order-1" }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3001/products/4/transactions",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["products", "4", "transactions"]
+        }
+      }
+    },
+    {
+      "name": "Create reservation",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "X-User-Id", "value": "tester" }],
+        "body": {
+          "mode": "formdata",
+          "formdata": [{ "key": "qty_requested", "value": "3" }]
+        },
+        "url": {
+          "raw": "http://localhost:3001/products/4/reserve",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["products", "4", "reserve"]
+        }
+      }
+    },
+    {
+      "name": "Diag regex",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3001/__diag?path=/products/4/transactions",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["__diag"],
+          "query": [{ "key": "path", "value": "/products/4/transactions" }]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+    "servers": {
+        "postman-api-http-server": {
+            "type": "http",
+            "url": "https://mcp.postman.com/mcp",
+            // Use "https://mcp.postman.com/mcp" for full or "https://mcp.postman.com/minimal" for minimal mode.
+            // For the EU server, use the "https://mcp.eu.postman.com" URL.
+            "headers": {
+                "Authorization": "Bearer ${input:postman-api-key}"
+            }
+        }
+    },
+    "inputs": [
+        {
+            "id": "postman-api-key",
+            "type": "promptString",
+            "description": "Enter your Postman API key"
+        }
+    ]
+}

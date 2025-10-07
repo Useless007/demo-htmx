@@ -1,50 +1,66 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+- Version change: [unversioned] → 0.1.0
+- Modified principles: Placeholder template → Project-specific principles for lightweight feature-first development
+- Added sections: Development Workflow, Minimal Governance
+- Removed sections: none
+- Templates requiring updates: .specify/templates/plan-template.md (✅ updated / aligns), .specify/templates/spec-template.md (✅ aligns), .specify/templates/tasks-template.md (✅ aligns)
+- Follow-up TODOs: TODO(RATIFICATION_DATE): supply original ratification date; consider adding CLA/approval process if org requires formal ratification.
+-->
+
+# Demo-htmx Constitution
+
+<!-- Constitution for the demo-htmx workspace: lightweight, feature-first rules to guide small projects and specs -->
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Feature-First, Small & Independent
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Every new piece of work starts as a small, independently deliverable feature. Features should be scoped so they can be implemented, tested, and demonstrated independently (see spec/user stories P1/P2/P3 pattern).
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+Rationale: Keeps feedback loops short and reduces coordination overhead for demos and early validation.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. Test-First for Critical Flows
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+For each prioritized user story (P1), tests or acceptance checks must be defined before the implementation proceeds. Tests can be manual acceptance criteria or automated tests where practical.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Rationale: Ensures the MVP delivers verifiable value and guides development.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### III. Data Accuracy & Reconciliation (Non-negotiable)
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+When changes affect persisted state (e.g., inventory quantities), the system MUST provide an append-only audit trail sufficient to reconcile current state by replaying transactions.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Rationale: For correctness-critical domains (inventory), the ability to reconcile is required to recover from user mistakes and to audit operations.
+
+### IV. Keep Implementation Details Separate from Specs
+
+Specifications must describe WHAT and WHY (user value, acceptance criteria, success metrics). Implementation choices (languages, frameworks, specific databases) belong in plan.md or implementation PRs.
+
+Rationale: Keeps the spec readable to non-technical stakeholders and avoids premature lock-in.
+
+### V. Minimal Viable Governance
+
+Adopt light-weight governance: the constitution defines must-have checks (tests for P1, audit requirements for critical data, basic code review). Heavy approvals (formal CLA or multi-step sign-off) are NOT required for small demos unless organizational policy dictates otherwise.
+
+Rationale: Balance speed of iteration with essential quality gates.
+
+## Additional Constraints & Standards
+
+- Data Integrity: For any feature that updates quantities, balances, or monetary values, audits and tests to reconcile state are mandatory.
+- Validation: Input validation and clear user-facing error messages MUST be present for operations that change persisted state.
+- Performance: For demo-sized features, aim for responsive UI operations (< 500ms simple interactions) but measure before optimizing.
+- Security: Authentication/authorization are out of scope for minimal demos unless required; when present, follow org standards.
+
+## Development Workflow & Quality Gates
+
+- Conventions: Use the project's specify templates (`.specify/templates/*`) and follow the plan → tasks → implementation flow.
+- Reviews: All PRs that modify behavior must include: link to spec.md, acceptance test steps, and either automated tests or manual test instructions.
+- Gates: A PR changing persisted state (e.g., DB schema, transactions) must include a reconciliation test demonstrating how to rebuild or verify balances from the audit log.
+- Releases: For demos, merging to main is allowed once the P1 acceptance test is documented and passes.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- Constitution is the source of minimal required checks for this workspace. Amendments should be recorded in this file and include: rationale, impact assessment, and any template updates required.
+- Amendments that change non-negotiable items (e.g., Data Accuracy & Reconciliation) must include a migration or mitigation plan.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 0.1.0 | **Ratified**: 2025-10-08 | **Last Amended**: 2025-10-08

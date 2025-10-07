@@ -1,0 +1,141 @@
+openapi: 3.0.3
+info:
+  title: Inventory API (MVP)
+  version: 0.1.0
+servers:
+  - url: /
+paths:
+  /products:
+    get:
+      summary: List products
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: search by name or SKU
+      responses:
+        "200":
+          description: product list
+    post:
+      summary: Create product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewProduct"
+      responses:
+        "201":
+          description: created
+  /products/{id}:
+    get:
+      summary: Get product
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: product
+    put:
+      summary: Update product metadata
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProduct"
+      responses:
+        "200":
+          description: updated
+
+  /products/{id}/transactions:
+    post:
+      summary: Record inbound/outbound transaction
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewTransaction"
+      responses:
+        "201":
+          description: recorded
+
+  /products/{id}/reserve:
+    post:
+      summary: Create a stock reservation (backorder)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                qty_requested:
+                  type: integer
+                note:
+                  type: string
+      responses:
+        "201":
+          description: reservation created
+
+components:
+  schemas:
+    NewProduct:
+      type: object
+      required: [name, sku, quantity]
+      properties:
+        name:
+          type: string
+        sku:
+          type: string
+        quantity:
+          type: integer
+        location:
+          type: string
+    UpdateProduct:
+      type: object
+      properties:
+        name:
+          type: string
+        sku:
+          type: string
+        location:
+          type: string
+    NewTransaction:
+      type: object
+      required: [delta]
+      properties:
+        delta:
+          type: integer
+        note:
+          type: string
+  securitySchemes:
+    DemoHeaderAuth:
+      type: apiKey
+      in: header
+      name: X-User-Id
+security:
+  - DemoHeaderAuth: []

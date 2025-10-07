@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https://unpkg.com; script-src 'self' https://unpkg.com; style-src 'self'; connect-src 'self'; img-src 'self' data:;">
+    <title>Demo HTMX + Bun + SQLite</title>
+    <script src="https://unpkg.com/htmx.org@2.0.7/dist/htmx.min.js" defer></script>
+    <script src="/app.js" defer></script>
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+    <main>
+        <h1>Inventory + Todos (HTMX + Bun + SQLite)</h1>
+
+        <form id="add-form" class="card inline-form" hx-post="/add" hx-target="#todos" hx-swap="outerHTML"
+            hx-disabled-elt="this" hx-indicator="#htmx-indicator">
+            <input id="todo-title" name="title" placeholder="New todo" autocomplete="off" />
+            <button id="add-btn" type="submit" class="btn">Add</button>
+        </form>
+
+        <!-- TODO: server will replace the TODOS_MARKER with initial list -->
+        <!-- TODOS_MARKER -->
+
+        <hr />
+
+        <section>
+            <h2>Products</h2>
+            <form id="product-form" class="card inline-form" hx-post="/products" hx-target="#products-list"
+                hx-swap="outerHTML" hx-disabled-elt="this" hx-indicator="#htmx-indicator">
+                <input name="name" placeholder="Product name" autocomplete="off" />
+                <input name="sku" placeholder="SKU" autocomplete="off" />
+                <input name="quantity" type="number" value="0" min="0" />
+                <button type="submit" class="btn primary">Create product</button>
+            </form>
+
+            <div id="htmx-indicator" class="htmx-indicator" aria-hidden="true">Loading…</div>
+            <div id="message" class="message" aria-live="polite"></div>
+
+            <!-- PRODUCTS_MARKER -->
+            <!-- Each product entry will include quick action forms injected server-side. Example rendered item:
+           <li data-id="1">
+             <strong>Widget</strong> (WGT) — qty: 5
+             <form hx-post="/products/1/transactions" hx-include="this" hx-swap="none" style="display:inline-block;margin-left:8px;">
+               <input name="delta" placeholder="+/- qty" size="4" />
+               <button type="submit">Apply</button>
+             </form>
+             <form hx-post="/products/1/reserve" hx-include="this" hx-swap="none" style="display:inline-block;margin-left:6px;">
+               <input name="qty_requested" placeholder="reserve" size="4" />
+               <button type="submit">Reserve</button>
+             </form>
+           </li>
+      -->
+        </section>
+    </main>
+
+    <!-- app.js contains HTMX response hooks (moved out of inline script for CSP) -->
+</body>
+
+</html>
